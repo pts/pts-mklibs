@@ -29,6 +29,19 @@
 
 using namespace Elf;
 
+#if __EXCEPTIONS  /* __EXCEPTIONS is predefined in g++ */
+#define FATAL(etype, msg) throw etype(msg)
+#else
+#include <stdio.h>
+#include <stdlib.h>
+static void fatal(const char *msg) __attribute__((noreturn));
+static void fatal(const char *msg) {
+  fprintf(stderr, "fatal: %s\n", msg);
+  exit(1);
+}
+#define FATAL(etype, msg) fatal(msg)
+#endif
+
 file::~file () throw ()
 {
   ::munmap (mem, len);
@@ -43,14 +56,16 @@ file *file::open (const char *filename) throw (std::bad_alloc, std::runtime_erro
   void *mem;
   size_t len;
   if ((fd = ::open (filename, O_RDONLY)) == -1)
-    throw std::runtime_error ("mapping failed");
+    FATAL(std::runtime_error, "mapping failed");
+#if __EXCEPTIONS
   try
+#endif
   {
     if (::fstat (fd, &buf) == -1)
-      throw std::runtime_error ("mapping failed");
+      FATAL(std::runtime_error, "mapping failed");
     len = buf.st_size;
     if ((mem = ::mmap (0, len, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0)) == MAP_FAILED)
-      throw std::runtime_error ("mapping failed");
+      FATAL(std::runtime_error, "mapping failed");
 
     uint8_t *buf = reinterpret_cast<uint8_t *>(mem);
 
@@ -61,14 +76,16 @@ file *file::open (const char *filename) throw (std::bad_alloc, std::runtime_erro
       case ELFCLASS64:
         return open_class<file_class_64> (buf, len);
       default:
-        throw std::runtime_error ("Invalid file class");
+        FATAL(std::runtime_error, "Invalid file class");
     }
   }
+#if __EXCEPTIONS
   catch (...)
   {
     ::close (fd);
     throw;
   }
+#endif
 }
 
 template<typename _class>
@@ -81,7 +98,7 @@ file *file::open_class(uint8_t *mem, size_t len) throw (std::bad_alloc, std::run
     case ELFDATA2MSB:
       return new file_data<_class, file_data_2MSB> (mem, len);
     default:
-      throw std::runtime_error ("Invalid file data");
+      FATAL(std::runtime_error, "Invalid file data");
   }
 }
 
@@ -90,9 +107,9 @@ file_data<_class, _data>::file_data(uint8_t *mem, size_t len) throw (std::bad_al
 : file(mem, len)
 {
   if (mem[EI_CLASS] != _class::id)
-    throw std::runtime_error ("Wrong file class");
+    FATAL(std::runtime_error, "Wrong file class");
   if (mem[EI_DATA] != _data::id)
-    throw std::runtime_error ("Wrong data encoding");
+    FATAL(std::runtime_error, "Wrong data encoding");
 
   typedef typename _elfdef<_class>::Ehdr Ehdr;
   Ehdr *ehdr = reinterpret_cast<Ehdr *>(mem);
@@ -206,7 +223,7 @@ section_real<_class, _data, section_type_DYNAMIC>::section_real(Shdr *header, ui
 : section_data<_class, _data>(header, mem)
 {
   if (this->type != SHT_DYNAMIC)
-    throw std::logic_error ("Wrong section type");
+    FATAL(std::logic_error, "Wrong section type");
 
   typedef typename _elfdef<_class>::Dyn Dyn;
   Dyn *dyns = reinterpret_cast<Dyn *>(this->mem);
@@ -245,7 +262,7 @@ section_real<_class, _data, section_type_DYNSYM>::section_real(Shdr *header, uin
 : section_data<_class, _data>(header, mem)
 {
   if (this->type != SHT_DYNSYM)
-    throw std::logic_error ("Wrong section type");
+    FATAL(std::logic_error, "Wrong section type");
 
   typedef typename _elfdef<_class>::Sym Sym;
   Sym *syms = reinterpret_cast<Sym *>(this->mem);
@@ -287,7 +304,7 @@ section_real<_class, _data, section_type_GNU_VERDEF>::section_real(Shdr *header,
 : section_data<_class, _data>(header, mem)
 {
   if (this->type != SHT_GNU_verdef)
-    throw std::logic_error ("Wrong section type");
+    FATAL(std::logic_error, "Wrong section type");
 
   typedef typename _elfdef<_class>::Verdef Verdef;
   uint8_t *act = this->mem;
@@ -335,7 +352,7 @@ section_real(Shdr *header, uint8_t *mem) throw (std::bad_alloc)
 : section_data<_class, _data> (header, mem)
 {
   if (this->type != SHT_GNU_verneed)
-    throw std::logic_error ("Wrong section type");
+    FATAL(std::logic_error, "Wrong section type");
 
   typedef typename _elfdef<_class>::Verneed Verneed;
   uint8_t *act = this->mem;
@@ -374,7 +391,7 @@ section_real (Shdr *header, uint8_t *mem) throw (std::bad_alloc)
 : section_data<_class, _data> (header, mem)
 {
   if (this->type != SHT_GNU_versym)
-    throw std::logic_error ("Wrong section type");
+    FATAL(std::logic_error, "Wrong section type");
 
   typedef typename _elfdef<_class>::Versym Versym;
   Versym *versyms = reinterpret_cast<Versym *>(this->mem);
@@ -401,7 +418,7 @@ segment_real<_class, _data, segment_type_INTERP>::segment_real (Phdr *header, ui
 : segment_data<_class, _data> (header, mem)
 {
   if (this->type != PT_INTERP)
-    throw std::logic_error ("Wrong segment type");
+    FATAL(std::logic_error, "Wrong segment type");
 
   this->interp = std::string(reinterpret_cast<const char *>(this->mem));
 }
@@ -505,7 +522,7 @@ void symbol_data<_class, _data>::update_version(const file &file, uint16_t index
       return;
   }
 
-  throw std::runtime_error("Invalid version");
+  FATAL(std::runtime_error, "Invalid version");
 }
 
 template <typename _class, typename _data>
