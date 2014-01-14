@@ -10,6 +10,14 @@
 
 #include "elf.hpp"
 
+#ifndef STT_GNU_IFUNC  /* Missing from old elf.h */
+#define STT_GNU_IFUNC   10              /* Symbol is indirect code object */
+#endif
+
+#ifndef STB_GNU_UNIQUE  /* Missing from old elf.h */
+#define STB_GNU_UNIQUE    10              /* Unique symbol.  */
+#endif
+
 enum
 { 
   GETOPT_FIRST = 256,
@@ -80,7 +88,7 @@ static void process_symbols_provided (const Elf::section_type<Elf::section_type_
     uint8_t type = symbol->get_type ();
     const std::string &name = symbol->get_name_string ();
 
-    if (bind != STB_GLOBAL && bind != STB_WEAK)
+    if (bind != STB_GLOBAL && bind != STB_WEAK && bind != STB_GNU_UNIQUE)
       continue;
     if (shndx == SHN_UNDEF || shndx == SHN_ABS)
       continue;
@@ -111,7 +119,7 @@ static void process_symbols_undefined (const Elf::section_type<Elf::section_type
     uint8_t type = symbol->get_type ();
     const std::string &name = symbol->get_name_string ();
 
-    if (bind != STB_GLOBAL && bind != STB_WEAK)
+    if (bind != STB_GLOBAL && bind != STB_WEAK && bind != STB_GNU_UNIQUE)
       continue;
     if (shndx != SHN_UNDEF)
       continue;
