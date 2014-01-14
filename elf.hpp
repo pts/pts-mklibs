@@ -41,12 +41,12 @@ namespace Elf
     public:
       virtual ~file () throw ();
 
-      virtual const uint8_t get_class() const throw () = 0;
-      virtual const uint8_t get_data() const throw () = 0;
-      const uint16_t get_type() const throw () { return type; }
-      const uint16_t get_machine() const throw () { return machine; }
-      const uint32_t get_flags() const throw () { return flags; }
-      const uint16_t get_shstrndx() const throw () { return shstrndx; }
+      virtual uint8_t get_class() const throw () = 0;
+      virtual uint8_t get_data() const throw () = 0;
+      uint16_t get_type() const throw () { return type; }
+      uint16_t get_machine() const throw () { return machine; }
+      uint32_t get_flags() const throw () { return flags; }
+      uint16_t get_shstrndx() const throw () { return shstrndx; }
 
       const std::vector<section *> get_sections() const throw () { return sections; };
       const section &get_section(unsigned int i) const throw (std::out_of_range) { return *sections.at(i); };

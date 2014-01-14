@@ -96,8 +96,8 @@ namespace Elf
       public:
         file_data(uint8_t *, size_t len) throw (std::bad_alloc, std::runtime_error);
 
-        const uint8_t get_class() const throw () { return _class::id; }
-        const uint8_t get_data() const throw () { return _data::id; }
+        uint8_t get_class() const throw () { return _class::id; }
+        uint8_t get_data() const throw () { return _data::id; }
     };
 
   template <typename _class, typename _data>
